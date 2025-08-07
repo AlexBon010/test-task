@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 import { RedisModule } from '@nestjs-modules/ioredis'
 
-import { ApiEventsService } from './api-events/api-events.service'
+import { ApiEventsService } from './apiEvents/apiEvents.service'
 import { ConfigsService } from '@cfg'
 
 @Module({

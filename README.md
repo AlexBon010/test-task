@@ -1,30 +1,76 @@
+# Test Task Project
+
+Microservice application with two services using MongoDB, Redis, Kafka and Elasticsearch.
+
+### Service-1 (Main Service)
+
+- **File Processing**: Download files from URLs and parse JSON/Excel files
+- **Data Storage**: Store parsed data in MongoDB
+- **API**: REST API for retrieving data from uploaded files
+- **Logging**: Send logs to Service-2 via Kafka
+- **Metrics**: Record API events in Redis TimeSeries for performance monitoring
+
+### Service-2 (Analytics Service)
+
+- **Log Processing**: Subscribe to Service-1 logs via Kafka and automatically store in Elasticsearch
+- **Search API**: REST API for retrieving logs with filters
+- **PDF Reports**: Generate PDF reports with response time statistics from Service-1 endpoints
+
+### Infrastructure
+
+- **MongoDB**: Database for document storage
+- **Redis**: Cache and time series for logs
+- **Kafka**: Message queue for inter-service communication
+- **Elasticsearch**: Search engine for logs and analytics
+
 ## 🚀 Quick Start
 
-Create `.env` file in the project root with the following variables:
+### 1. Create `.env` file in the project root
 
 ```env
-APP_PORT=3000
+# Service ports
+SERVICE_1_PORT=3000
+SERVICE_2_PORT=3001
 
-MONGODB_PORT=27017
+# MongoDB configuration
 MONGODB_HOST=mongodb
+MONGODB_PORT=27017
 
-REDIS_PORT=6379
+# Redis configuration
 REDIS_HOST=redis-timeseries
+REDIS_PORT=6379
 
-KAFKA_PORT=9092
+# Kafka configuration
 KAFKA_HOST=kafka
-KAFKA_LOGS_CLIENT=logs-producer
+KAFKA_PORT=9092
+
+# Elasticsearch configuration
+ELASTICSEARCH_HOST=elasticsearch
+ELASTICSEARCH_PORT=9200
 ```
 
-Move the docker-compose directory one level up (to be at the same level as test-task-service-1 and
-test-task-service-2)
-
-├── test-task-service-1 ├── test-task-service-2 └── docker-compose
-
-Start the project:
+### 2. Start the project
 
 ```bash
-docker-compose --evn-file .env up --build -d
+docker-compose --env-file .env up --build -d
 ```
 
-Hint: API docs available at GET localhost:3000/api
+## 📋 Available Services
+
+- **Service-1 API**: http://localhost:3000
+  - **API Documentation**: http://localhost:3000/api (GET)
+- **Service-2 API**: http://localhost:3001
+  - **API Documentation**: http://localhost:3001/api (GET)
+
+> **Note**: Database services (MongoDB, Redis, Kafka, Elasticsearch) are only accessible within the Docker network and not exposed to the host for security reasons.
+
+## 📁 Project Structure
+
+```
+test-task/
+├── service-1/          # Main service - file processing & API
+├── service-2/          # Analytics service - logs & reports
+├── docker-compose.yml  # Docker configuration
+├── .env               # Environment variables
+└── README.md          # Documentation
+```

@@ -2,9 +2,9 @@
 /dist
 /node_modules
 /build
-.vscode
 
 # Logs
+
 *.log
 npm-debug.log*
 pnpm-debug.log*
@@ -35,6 +35,8 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
+# dotenv environment variable files
+.env.*
 .env
 .env.development.local
 .env.test.local
@@ -44,8 +46,7 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
-node_modules
-dist
+
 # Runtime data
 pids
 *.pid
