@@ -19,7 +19,7 @@
 		"noFallthroughCasesInSwitch": false,
 		"paths": {
 			"@db": ["src/db"],
-			"@cfg": ["cfg"],
+			"@cfg": ["src/cfg"],
 			"@messaging": ["src/messaging"]
 		}
 	}

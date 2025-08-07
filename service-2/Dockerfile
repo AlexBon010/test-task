@@ -34,10 +34,9 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
-COPY .env .env
 
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-EXPOSE ${APP_PORT}
+EXPOSE ${SERVICE_2_PORT}
 
 CMD ["node", "dist/main"]
