@@ -41,12 +41,12 @@ export class FilesProcessingService {
 		})
 
 		if (fileExtension === 'json') {
-			this.parseJson(file, this.uploadedFileService, parentId)
+			await this.parseJson(file, this.uploadedFileService, parentId)
 			return parentId
 		}
 
 		if (fileExtension === 'xlsx' || fileExtension === 'xls') {
-			this.parseExcel(file, this.uploadedFileService, parentId)
+			await this.parseExcel(file, this.uploadedFileService, parentId)
 			return parentId
 		}
 
@@ -61,7 +61,7 @@ export class FilesProcessingService {
 		}
 	}
 
-	private parseJson(
+	private async parseJson(
 		file: Express.Multer.File,
 		uploadService: UploadedFileService,
 		parentId: string
@@ -80,8 +80,8 @@ export class FilesProcessingService {
 				},
 			})
 
-			const streamsPromise = async () =>
-				await new Promise((resolve, reject) => {
+			const streamsPromise = (): Promise<void> =>
+				new Promise((resolve, reject) => {
 					pipeline(
 						Readable.from(file.buffer, {
 							highWaterMark: 1024 * 1024 * 10,
@@ -93,17 +93,17 @@ export class FilesProcessingService {
 							if (err) {
 								reject(err)
 							}
-							resolve(null)
+							resolve()
 						}
 					)
 				})
-			void streamsPromise()
+			await streamsPromise()
 		} catch (err) {
 			throw new BadRequestException(`Failed to parse JSON file: ${err.message}`)
 		}
 	}
 
-	private parseExcel(
+	private async parseExcel(
 		file: Express.Multer.File,
 		uploadService: UploadedFileService,
 		parentId: string
@@ -118,7 +118,7 @@ export class FilesProcessingService {
 				defval: null,
 				raw: false,
 			})
-			void uploadService.createRecordsBatch(parentId, records)
+			await uploadService.createRecordsBatch(parentId, records)
 		} catch (err) {
 			throw new BadRequestException(`Failed to parse Excel file: ${err.message}`)
 		}

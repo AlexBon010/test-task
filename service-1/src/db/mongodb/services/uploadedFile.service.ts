@@ -21,24 +21,37 @@ export class UploadedFileService {
 	}
 
 	async createRecordsBatch(parentId: string, records: Record<string, unknown>[]): Promise<void> {
-		if (!records.length) return
+		if (!records.length) return;
 
-		const batchSize = 50000
+		const batchSize = 50000;
 
-		for (let start = 0; start < records.length; start += batchSize) {
-			const batch = records.slice(start, start + batchSize)
+		const session = await this.recordEntityModel.db.startSession();
+		session.startTransaction();
 
-			const recordEntities = batch.map((record) => ({
-				uploadedFileId: parentId,
-				data: record,
-			}))
+		try {
+			for (let start = 0; start < records.length; start += batchSize) {
+				const batch = records.slice(start, start + batchSize);
 
-			await this.recordEntityModel.insertMany(recordEntities, {
-				ordered: false,
-				rawResult: false,
-			})
+				const recordEntities = batch.map((record) => ({
+					uploadedFileId: parentId,
+					data: record,
+				}));
+
+				await this.recordEntityModel.insertMany(recordEntities, {
+					session,
+					ordered: true
+				});
+			}
+
+			await session.commitTransaction();
+		} catch (error) {
+			await session.abortTransaction();
+			throw new Error(`Failed to insert records batch: ${error.message}`);
+		} finally {
+			await session.endSession();
 		}
 	}
+
 
 	async getRecordsByParentId({
 		parentId,
