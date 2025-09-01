@@ -1,4 +1,3 @@
-import { RedisModuleOptions } from '@nestjs-modules/ioredis'
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ElasticsearchModuleOptions } from '@nestjs/elasticsearch'
@@ -8,16 +7,11 @@ import { KafkaOptions } from '@nestjs/microservices'
 export class ConfigsService {
 	constructor(private configService: ConfigService) { }
 
-	redisConfig(): RedisModuleOptions {
+	redisConfig(): string {
 		const redisHost = this.configService.get('REDIS_HOST')
 		const redisPort = this.configService.get('REDIS_PORT')
 
-		const url = `redis://${redisHost}:${redisPort}`
-
-		return {
-			url,
-			type: 'single',
-		}
+		return `redis://${redisHost}:${redisPort}`
 	}
 
 	kafkaConfig(): KafkaOptions {

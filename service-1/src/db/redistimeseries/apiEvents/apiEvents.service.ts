@@ -1,5 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common'
-import { InjectRedis } from '@nestjs-modules/ioredis'
+import { Injectable, Logger, Inject } from '@nestjs/common'
 import Redis from 'ioredis'
 
 @Injectable()
@@ -7,7 +6,7 @@ export class ApiEventsService {
 	private readonly logger = new Logger(ApiEventsService.name)
 	private readonly retention = 30 * 24 * 60 * 60 * 1000
 
-	constructor(@InjectRedis() private readonly redis: Redis) { }
+	constructor(@Inject('REDIS_CONNECTION') private readonly redis: Redis) { }
 
 	async recordResponseTime(
 		endpoint: string,

@@ -1,23 +1,16 @@
-import { RedisModuleOptions } from '@nestjs-modules/ioredis'
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { KafkaOptions } from '@nestjs/microservices'
-import { MongooseModuleFactoryOptions } from '@nestjs/mongoose'
 
 @Injectable()
 export class ConfigsService {
 	constructor(private configService: ConfigService) { }
 
-	redisConfig(): RedisModuleOptions {
+	redisConfig(): string {
 		const redisHost = this.configService.get('REDIS_HOST')
 		const redisPort = this.configService.get('REDIS_PORT')
 
-		const url = `redis://${redisHost}:${redisPort}`
-
-		return {
-			url,
-			type: 'single',
-		}
+		return `redis://${redisHost}:${redisPort}`
 	}
 
 	kafkaConfig(): KafkaOptions {
@@ -37,12 +30,10 @@ export class ConfigsService {
 		}
 	}
 
-	mongoConfig(): MongooseModuleFactoryOptions {
+	mongoConfig(): string {
 		const mongoHost = this.configService.get('MONGODB_HOST')
 		const mongoPort = this.configService.get('MONGODB_PORT')
 
-		return {
-			uri: `mongodb://${mongoHost}:${mongoPort}/docs`,
-		}
+		return `mongodb://${mongoHost}:${mongoPort}/docs?replicaSet=rs0`
 	}
 }
