@@ -1,19 +1,10 @@
 import { Module } from '@nestjs/common'
-import { RedisModule } from '@nestjs-modules/ioredis'
 
 import { ApiEventsService } from './apiEvents/apiEvents.service'
-import { ConfigsService } from '@cfg'
+import { redisProvider } from './redis.provider'
 
 @Module({
-	imports: [
-		RedisModule.forRootAsync({
-			useFactory: (configService: ConfigsService) => {
-				return configService.redisConfig()
-			},
-			inject: [ConfigsService],
-		}),
-	],
-	providers: [ApiEventsService],
+	providers: [redisProvider, ApiEventsService],
 	exports: [ApiEventsService],
 })
 export class RedistimeseriesModule { }
