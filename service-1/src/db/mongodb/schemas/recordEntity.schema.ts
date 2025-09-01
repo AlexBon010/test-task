@@ -1,14 +1,7 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import mongoose, { HydratedDocument, Mixed, ObjectId } from 'mongoose'
+import { ObjectId } from 'mongodb'
 
-@Schema()
-export class RecordEntity {
-	@Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'UploadedFile', required: true, index: true })
+export interface RecordEntity {
+	_id?: ObjectId
 	uploadedFileId: ObjectId
-
-	@Prop({ type: Map, of: mongoose.Schema.Types.Mixed, required: true })
-	data: { type: Mixed }
+	data: Record<string, unknown>
 }
-
-export const RecordEntitySchema = SchemaFactory.createForClass(RecordEntity)
-export type RecordEntityDocument = HydratedDocument<RecordEntity>

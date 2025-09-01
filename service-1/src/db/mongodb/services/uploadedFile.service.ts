@@ -1,48 +1,123 @@
-import { Injectable } from '@nestjs/common'
-import { InjectModel } from '@nestjs/mongoose'
-import { Model } from 'mongoose'
+import { Injectable, Inject } from '@nestjs/common'
+import { Collection, Db, ObjectId, MongoClient } from 'mongodb'
 
-import { UploadedFile, UploadedFileDocument } from '../schemas/uploadedFile.schema'
-import { RecordEntity, RecordEntityDocument } from '../schemas/recordEntity.schema'
+import { UploadedFile } from '../schemas/uploadedFile.schema'
+import { RecordEntity } from '../schemas/recordEntity.schema'
 import { GetDocRequestDto, GetDocResponseDto } from '../../../files-processing/dto/getDoc.dto'
 import { parseFilterString } from './filterParsing.util'
 
 @Injectable()
 export class UploadedFileService {
-	constructor(
-		@InjectModel(UploadedFile.name) private uploadedFileModel: Model<UploadedFileDocument>,
-		@InjectModel(RecordEntity.name) private recordEntityModel: Model<RecordEntityDocument>
-	) { }
+	private uploadedFileCollection: Collection<UploadedFile>
+	private recordEntityCollection: Collection<RecordEntity>
 
-	async createParentDocument(data: UploadedFile): Promise<string> {
-		const createdFile = new this.uploadedFileModel(data)
-		const savedFile = await createdFile.save()
-		return savedFile._id.toString()
+	constructor(
+		@Inject('MONGODB_CONNECTION') private db: Db,
+		@Inject('MONGODB_CLIENT') private client: MongoClient
+	) {
+		this.uploadedFileCollection = this.db.collection<UploadedFile>('uploadedfiles')
+		this.recordEntityCollection = this.db.collection<RecordEntity>('recordentities')
+		void this.createIndexes()
+	}
+
+	private async createIndexes(): Promise<void> {
+		try {
+			await Promise.all([
+				this.uploadedFileCollection.createIndex({ fileType: 1 }),
+
+				this.recordEntityCollection.createIndex({ uploadedFileId: 1 }),
+
+				this.recordEntityCollection.createIndex({ 'data.timestamp': 1, uploadedFileId: 1 })
+			])
+		} catch (error) {
+			console.error('Failed to create MongoDB indexes:', error)
+		}
+	}
+
+	async createParentDocument(data: Omit<UploadedFile, '_id'>): Promise<string> {
+		const result = await this.uploadedFileCollection.insertOne(data)
+		return result.insertedId.toString()
+	}
+
+	async createParentDocumentWithRecords(
+		parentData: Omit<UploadedFile, '_id'>,
+		records: Record<string, unknown>[]
+	): Promise<string> {
+		const client = this.client
+		const session = client.startSession()
+
+		try {
+			let parentId: string
+
+			await session.withTransaction(async () => {
+				const parentResult = await this.uploadedFileCollection.insertOne(parentData, { session })
+				parentId = parentResult.insertedId.toString()
+
+				if (records.length > 0) {
+					const batchSize = 50000
+
+					for (let start = 0; start < records.length; start += batchSize) {
+						const batch = records.slice(start, start + batchSize)
+
+						const recordEntities: Omit<RecordEntity, '_id'>[] = batch.map(record => ({
+							uploadedFileId: parentResult.insertedId,
+							data: record
+						}))
+
+						await this.recordEntityCollection.insertMany(recordEntities, {
+							ordered: false,
+							session
+						})
+					}
+				}
+			})
+
+			return parentId!
+		} finally {
+			await session.endSession()
+		}
 	}
 
 	async createRecordsBatch(
 		parentId: string,
 		records: Record<string, unknown>[]
 	): Promise<void> {
-		if (!records.length) return;
+		if (!records.length) return
 
-		const batchSize = 50000;
+		const batchSize = 50000
+		const client = this.client
 
-		for (let start = 0; start < records.length; start += batchSize) {
-			const batch = records.slice(start, start + batchSize);
+		const session = client.startSession()
 
-			const recordEntities = batch.map(record => ({
-				uploadedFileId: parentId,
-				data: record
-			}));
+		try {
+			await session.withTransaction(async () => {
+				const parentExists = await this.uploadedFileCollection.findOne(
+					{ _id: new ObjectId(parentId) },
+					{ session }
+				)
 
-			await this.recordEntityModel.insertMany(recordEntities, {
-				ordered: false,
-				rawResult: false
-			});
+				if (!parentExists) {
+					throw new Error(`Parent document with ID ${parentId} not found`)
+				}
+
+				for (let start = 0; start < records.length; start += batchSize) {
+					const batch = records.slice(start, start + batchSize)
+
+					const recordEntities: Omit<RecordEntity, '_id'>[] = batch.map(record => ({
+						uploadedFileId: new ObjectId(parentId),
+						data: record
+					}))
+
+					await this.recordEntityCollection.insertMany(recordEntities, {
+						ordered: false,
+						session
+					})
+				}
+			})
+		} finally {
+			await session.endSession()
 		}
 	}
-
 
 	async getRecordsByParentId({
 		parentId,
@@ -51,23 +126,27 @@ export class UploadedFileService {
 		limit = 100,
 		filter,
 	}: GetDocRequestDto & { parentId: string }): Promise<GetDocResponseDto[]> {
-		const filterQuery = parseFilterString<RecordEntity>(filter)
+		const filterQuery = parseFilterString(filter)
 
 		const query = {
-			uploadedFileId: parentId,
+			uploadedFileId: new ObjectId(parentId),
 			...filterQuery,
 		}
 
-		let findQuery = this.recordEntityModel.find(query).select('data').select('data -_id').lean()
+		const options: any = {
+			projection: { data: 1, _id: 0 }
+		}
 
 		if (page && docsPerPage) {
 			const skip = (page - 1) * docsPerPage
-			findQuery = findQuery.skip(skip).limit(Math.min(docsPerPage, limit))
+			options.skip = skip
+			options.limit = Math.min(docsPerPage, limit)
 		} else {
-			findQuery = findQuery.limit(limit)
+			options.limit = limit
 		}
 
-		const data = await findQuery.exec()
+		const cursor = this.recordEntityCollection.find(query, options)
+		const data = await cursor.toArray()
 
 		return data.map((doc) => doc.data)
 	}

@@ -1,6 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRedis } from '@nestjs-modules/ioredis';
-import Redis from 'ioredis';
+import { Injectable, Logger, Inject } from '@nestjs/common'
+import Redis from 'ioredis'
 
 type LogKey = "response_time"
 
@@ -11,9 +10,9 @@ interface GetLogsAboutEndpointResponse {
 
 @Injectable()
 export class LogsService {
-    private readonly logger = new Logger(LogsService.name);
+    private readonly logger = new Logger(LogsService.name)
 
-    constructor(@InjectRedis() private readonly redis: Redis) { }
+    constructor(@Inject('REDIS_CONNECTION') private readonly redis: Redis) { }
 
     async getLogsAboutEndpoint(
         endpoint: string,

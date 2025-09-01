@@ -1,10 +1,10 @@
-import { FilterQuery } from 'mongoose'
+import { Filter } from 'mongodb'
 
-interface ParseFilterStringResult<T> {
-	$and?: FilterQuery<T>[]
+interface ParseFilterStringResult {
+	$and?: Filter<unknown>[]
 }
 
-export const parseFilterString = <T>(filterStr?: string): ParseFilterStringResult<T> => {
+export const parseFilterString = (filterStr?: string): ParseFilterStringResult => {
 	if (!filterStr) return {}
 
 	const operatorsMap: Record<string, string> = {
@@ -19,7 +19,7 @@ export const parseFilterString = <T>(filterStr?: string): ParseFilterStringResul
 		.split(',')
 		.map((condition) => {
 			const [, field, operator, value] = condition.match(/([^><!=]+)([><]=?|=)(.+)/) || []
-			if (!field || !operator || !value) return []
+			if (!field || !operator || !value) return null
 
 			const fieldPath = `data.${field.trim()}`
 			const parsedValue = isNaN(Number(value.trim())) ? value.trim() : Number(value.trim())
@@ -28,7 +28,7 @@ export const parseFilterString = <T>(filterStr?: string): ParseFilterStringResul
 				? { [fieldPath]: { [operatorsMap[operator]]: parsedValue } }
 				: { [fieldPath]: parsedValue }
 		})
-		.filter(Boolean)
+		.filter(Boolean) as Filter<unknown>[]
 
-	return { $and: conditions as FilterQuery<T>[] }
+	return { $and: conditions }
 }
