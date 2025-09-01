@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common'
-import { Collection, Db, ObjectId } from 'mongodb'
+import { Collection, Db, ObjectId, MongoClient } from 'mongodb'
 
 import { UploadedFile } from '../schemas/uploadedFile.schema'
 import { RecordEntity } from '../schemas/recordEntity.schema'
@@ -11,7 +11,10 @@ export class UploadedFileService {
 	private uploadedFileCollection: Collection<UploadedFile>
 	private recordEntityCollection: Collection<RecordEntity>
 
-	constructor(@Inject('MONGODB_CONNECTION') private db: Db) {
+	constructor(
+		@Inject('MONGODB_CONNECTION') private db: Db,
+		@Inject('MONGODB_CLIENT') private client: MongoClient
+	) {
 		this.uploadedFileCollection = this.db.collection<UploadedFile>('uploadedfiles')
 		this.recordEntityCollection = this.db.collection<RecordEntity>('recordentities')
 		void this.createIndexes()
@@ -19,20 +22,60 @@ export class UploadedFileService {
 
 	private async createIndexes(): Promise<void> {
 		try {
-			// Index for fileType in UploadedFile collection
-			await this.uploadedFileCollection.createIndex({ fileType: 1 })
+			await Promise.all([
+				this.uploadedFileCollection.createIndex({ fileType: 1 }),
 
-			// Index for uploadedFileId in RecordEntity collection  
-			await this.recordEntityCollection.createIndex({ uploadedFileId: 1 })
+				this.recordEntityCollection.createIndex({ uploadedFileId: 1 }),
+
+				this.recordEntityCollection.createIndex({ 'data.timestamp': 1, uploadedFileId: 1 })
+			])
 		} catch (error) {
-			// Index creation errors are not critical, just log them
-			console.warn('Failed to create MongoDB indexes:', error)
+			console.error('Failed to create MongoDB indexes:', error)
 		}
 	}
 
 	async createParentDocument(data: Omit<UploadedFile, '_id'>): Promise<string> {
 		const result = await this.uploadedFileCollection.insertOne(data)
 		return result.insertedId.toString()
+	}
+
+	async createParentDocumentWithRecords(
+		parentData: Omit<UploadedFile, '_id'>,
+		records: Record<string, unknown>[]
+	): Promise<string> {
+		const client = this.client
+		const session = client.startSession()
+
+		try {
+			let parentId: string
+
+			await session.withTransaction(async () => {
+				const parentResult = await this.uploadedFileCollection.insertOne(parentData, { session })
+				parentId = parentResult.insertedId.toString()
+
+				if (records.length > 0) {
+					const batchSize = 50000
+
+					for (let start = 0; start < records.length; start += batchSize) {
+						const batch = records.slice(start, start + batchSize)
+
+						const recordEntities: Omit<RecordEntity, '_id'>[] = batch.map(record => ({
+							uploadedFileId: parentResult.insertedId,
+							data: record
+						}))
+
+						await this.recordEntityCollection.insertMany(recordEntities, {
+							ordered: false,
+							session
+						})
+					}
+				}
+			})
+
+			return parentId!
+		} finally {
+			await session.endSession()
+		}
 	}
 
 	async createRecordsBatch(
@@ -42,18 +85,37 @@ export class UploadedFileService {
 		if (!records.length) return
 
 		const batchSize = 50000
+		const client = this.client
 
-		for (let start = 0; start < records.length; start += batchSize) {
-			const batch = records.slice(start, start + batchSize)
+		const session = client.startSession()
 
-			const recordEntities: Omit<RecordEntity, '_id'>[] = batch.map(record => ({
-				uploadedFileId: new ObjectId(parentId),
-				data: record
-			}))
+		try {
+			await session.withTransaction(async () => {
+				const parentExists = await this.uploadedFileCollection.findOne(
+					{ _id: new ObjectId(parentId) },
+					{ session }
+				)
 
-			await this.recordEntityCollection.insertMany(recordEntities, {
-				ordered: false
+				if (!parentExists) {
+					throw new Error(`Parent document with ID ${parentId} not found`)
+				}
+
+				for (let start = 0; start < records.length; start += batchSize) {
+					const batch = records.slice(start, start + batchSize)
+
+					const recordEntities: Omit<RecordEntity, '_id'>[] = batch.map(record => ({
+						uploadedFileId: new ObjectId(parentId),
+						data: record
+					}))
+
+					await this.recordEntityCollection.insertMany(recordEntities, {
+						ordered: false,
+						session
+					})
+				}
 			})
+		} finally {
+			await session.endSession()
 		}
 	}
 

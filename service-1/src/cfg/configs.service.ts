@@ -34,6 +34,6 @@ export class ConfigsService {
 		const mongoHost = this.configService.get('MONGODB_HOST')
 		const mongoPort = this.configService.get('MONGODB_PORT')
 
-		return `mongodb://${mongoHost}:${mongoPort}/docs`
+		return `mongodb://${mongoHost}:${mongoPort}/docs?replicaSet=rs0`
 	}
 }

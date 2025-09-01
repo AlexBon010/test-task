@@ -37,14 +37,46 @@
 #     env_file:
 #       - .env
 
-#   mongodb:
-#     image: mongo:latest
-#     container_name: mongodb
-#     restart: unless-stopped
-#     volumes:
-#       - mongodb_data:/data/db
-#     networks:
-#       - service-1-network
+# mongodb:
+#   image: mongo:latest
+#   container_name: mongodb
+#   restart: unless-stopped
+#   volumes:
+#     - 'mongodb_data:/data/db'
+#     - 'mongodb_config:/data/configdb'
+#   ports:
+#     - '27017:27017'
+#   command: ['--replSet', 'rs0', '--bind_ip_all', '--port', '27017']
+#   networks:
+#     - service-1-network
+#   healthcheck:
+#     test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}) }" | mongosh --port 27017 --quiet
+#     interval: 5s
+#     timeout: 30s
+#     start_period: 0s
+#     start_interval: 1s
+#     retries: 30
+
+# mongo-init:
+#   image: mongo:latest
+#   depends_on:
+#     mongodb:
+#       condition: service_healthy
+#   command: |
+#     mongosh --host mongodb:27017 --eval "
+#       try {
+#         rs.status();
+#         print('Replica set already initialized');
+#       } catch (err) {
+#         rs.initiate({
+#           _id: 'rs0',
+#           members: [{ _id: 0, host: 'mongodb:27017' }]
+#         });
+#         print('Replica set initialized');
+#       }
+#     "
+#   networks:
+#     - service-1-network
 
 #   redis-timeseries:
 #     image: redis/redis-stack:latest
@@ -102,7 +134,6 @@
 #   redis_data:
 #   kafka_data:
 #   elasticsearch_data:
-version: '3.8'
 
 networks:
   service-1-network:
@@ -135,9 +166,39 @@ services:
     container_name: mongodb
     restart: unless-stopped
     volumes:
-      - mongodb_data:/data/db
+      - 'mongodb_data:/data/db'
+      - 'mongodb_config:/data/configdb'
     ports:
       - '27017:27017'
+    command: ['--replSet', 'rs0', '--bind_ip_all', '--port', '27017']
+    networks:
+      - service-1-network
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'localhost:27017'}]}) }" | mongosh --port 27017 --quiet
+      interval: 5s
+      timeout: 30s
+      start_period: 0s
+      start_interval: 1s
+      retries: 30
+
+  mongo-init:
+    image: mongo:latest
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    command: |
+      mongosh --host mongodb:27017 --eval "
+        try {
+          rs.status();
+          print('Replica set already initialized');
+        } catch (err) {
+          rs.initiate({
+            _id: 'rs0',
+            members: [{ _id: 0, host: 'mongodb:27017' }]
+          });
+          print('Replica set initialized');
+        }
+      "
     networks:
       - service-1-network
 
@@ -199,6 +260,7 @@ services:
 
 volumes:
   mongodb_data:
+  mongodb_config:
   redis_data:
   kafka_data:
   elasticsearch_data:
