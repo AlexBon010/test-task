@@ -1,5 +1,4 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { HydratedDocument } from 'mongoose'
+import { ObjectId } from 'mongodb'
 
 export enum FileType {
 	JSON = 'json',
@@ -7,14 +6,8 @@ export enum FileType {
 	XLS = 'xls',
 }
 
-@Schema()
-export class UploadedFile {
-	@Prop({ required: true })
+export interface UploadedFile {
+	_id?: ObjectId
 	originalFileName: string
-
-	@Prop({ required: true, enum: FileType, index: true })
 	fileType: FileType
 }
-
-export type UploadedFileDocument = HydratedDocument<UploadedFile>
-export const UploadedFileSchema = SchemaFactory.createForClass(UploadedFile)

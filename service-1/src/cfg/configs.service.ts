@@ -2,7 +2,6 @@ import { RedisModuleOptions } from '@nestjs-modules/ioredis'
 import { Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { KafkaOptions } from '@nestjs/microservices'
-import { MongooseModuleFactoryOptions } from '@nestjs/mongoose'
 
 @Injectable()
 export class ConfigsService {
@@ -37,12 +36,10 @@ export class ConfigsService {
 		}
 	}
 
-	mongoConfig(): MongooseModuleFactoryOptions {
+	mongoConfig(): string {
 		const mongoHost = this.configService.get('MONGODB_HOST')
 		const mongoPort = this.configService.get('MONGODB_PORT')
 
-		return {
-			uri: `mongodb://${mongoHost}:${mongoPort}/docs`,
-		}
+		return `mongodb://${mongoHost}:${mongoPort}/docs`
 	}
 }
