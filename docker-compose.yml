@@ -18,7 +18,7 @@ services:
       - service-1-network
     depends_on:
       mongo-init:
-        condition: service_healthy
+        condition: service_started
       redis-timeseries:
         condition: service_started
       kafka:

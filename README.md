@@ -47,6 +47,8 @@ KAFKA_PORT=9092
 # Elasticsearch configuration
 ELASTICSEARCH_HOST=elasticsearch
 ELASTICSEARCH_PORT=9200
+
+MAX_FILE_SIZE_MB=30
 ```
 
 ### 2. Start the project

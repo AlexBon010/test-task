@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer'
-import { IsNotEmpty, IsNumber, IsString, validateSync } from 'class-validator'
+import { IsNotEmpty, IsNumber, IsString, Max, Min, validateSync } from 'class-validator'
 
 class EnvironmentVariables {
 	@IsNotEmpty()
@@ -29,6 +29,12 @@ class EnvironmentVariables {
 	@IsNotEmpty()
 	@IsString()
 	KAFKA_HOST: string
+
+	@IsNotEmpty()
+	@IsNumber({ allowInfinity: false, allowNaN: false })
+	@Min(1)
+	@Max(100)
+	MAX_FILE_SIZE_MB: number
 }
 
 export function validate(config: Record<string, unknown>) {
