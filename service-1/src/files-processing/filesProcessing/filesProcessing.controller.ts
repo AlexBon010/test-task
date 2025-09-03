@@ -17,7 +17,7 @@ import { FilesProcessingService } from './filesProcessing.service'
 import { GetInFileRequestDto } from '../dto/getInFileRequest.dto'
 import { UploadFileResponseDto } from '../dto/uploadFileResponse.dto'
 import { UploadFileDto } from '../dto/uploadFile.dto'
-import { GetDocRequestDto, GetDocResponseDto } from '../dto/getDoc.dto'
+import { GetDocRequestDto, GetDocResponseDto, GetDocParamsDto } from '../dto/getDoc.dto'
 
 @ApiTags('Files processing')
 @Controller('files')
@@ -33,6 +33,7 @@ export class FilesProcessingController {
 		status: 200,
 		description: 'File download successful',
 	})
+	@ApiResponse({ status: 400, description: 'Invalid URL, file not found, or file size exceeds 30MB limit' })
 	@Get('getDataInFile')
 	async getInFile(@Query() query: GetInFileRequestDto, @Res() res: Response): Promise<Writable> {
 		const { url, fileName } = query
@@ -56,7 +57,7 @@ export class FilesProcessingController {
 		description: 'File successfully uploaded and parsed',
 		type: UploadFileResponseDto,
 	})
-	@ApiResponse({ status: 400, description: 'Invalid file format or content' })
+	@ApiResponse({ status: 400, description: 'Invalid file format, content, or file size exceeds 30MB limit' })
 	@ApiBody({ type: UploadFileDto })
 	@ApiConsumes('multipart/form-data')
 	@UseInterceptors(FileInterceptor('file'))
@@ -72,9 +73,10 @@ export class FilesProcessingController {
 	})
 	@ApiResponse({ status: 200, description: 'Documents found', type: [GetDocResponseDto] })
 	@ApiResponse({ status: 404, description: 'Parent document not found' })
+	@ApiResponse({ status: 400, description: 'Invalid ID format' })
 	async getDoc(
 		@Query() query: GetDocRequestDto,
-		@Param('id') id: string
+		@Param() { id }: GetDocParamsDto
 	): Promise<GetDocResponseDto[]> {
 		const result = await this.filesProcessingService.getDoc({
 			...query,

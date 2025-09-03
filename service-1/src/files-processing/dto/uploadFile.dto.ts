@@ -8,11 +8,3 @@ export class UploadFileDto {
 	})
 	file: Express.Multer.File
 }
-
-export class UploadFileResponseDto {
-	@ApiProperty({
-		example: '507f1f77bcf86cd799439011',
-		description: 'ID of the uploaded and processed file',
-	})
-	id: string
-}
