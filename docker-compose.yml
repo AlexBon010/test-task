@@ -49,8 +49,6 @@ services:
     volumes:
       - 'mongodb_data:/data/db'
       - 'mongodb_config:/data/configdb'
-    ports:
-      - '${MONGODB_PORT}:${MONGODB_PORT}'
     command: ['--replSet', 'rs0', '--bind_ip_all', '--port', '27017']
     networks:
       - service-1-network
@@ -91,8 +89,6 @@ services:
     restart: unless-stopped
     volumes:
       - redis_data:/data
-    ports:
-      - '6379:6379'
     networks:
       - service-1-network
       - service-2-network
@@ -101,9 +97,6 @@ services:
     image: apache/kafka:latest
     container_name: kafka
     restart: unless-stopped
-    ports:
-      - '${KAFKA_PORT}:9092'
-      - '9093:9093'
     volumes:
       - kafka_data:/var/lib/kafka/data
     environment:
@@ -133,8 +126,6 @@ services:
     image: elasticsearch:9.1.0
     container_name: elasticsearch
     restart: unless-stopped
-    ports:
-      - '9200:9200'
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     environment:
